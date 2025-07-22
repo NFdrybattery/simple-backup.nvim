@@ -30,7 +30,32 @@ local function backup_file()
     local file_name = vim.fn.expand("%:t:r")    -- 文件名（不含扩展名）
     local file_extension = vim.fn.expand("%:e") -- 扩展名
 
-    -- 新增：检查是否在包含列表中（如果配置了include_files）
+    local normalized_file = vim.fn.fnamemodify(current_file, ":p"):gsub("\\", "/")
+
+    -- 检查是否在包含目录中（如果配置了include_dirs）
+    if M.config.include_dirs then
+        local matched = false
+        for _, dir in ipairs(M.config.include_dirs) do
+            if normalized_file:find("/" .. dir .. "/") then
+                matched = true
+                break
+            end
+        end
+        if not matched then
+            return
+        end
+    end
+
+    -- 检查是否在排除目录中
+    if M.config.exclude_dirs then
+        for _, dir in ipairs(M.config.exclude_dirs) do
+            if normalized_file:find("/" .. dir .. "/") then
+                return
+            end
+        end
+    end
+
+    -- 检查是否在包含列表中（如果配置了include_files）
     if M.config.include_files then
         local matched = false
         for _, pattern in ipairs(M.config.include_files) do
@@ -45,53 +70,47 @@ local function backup_file()
         end
     end
 
-    -- 原有：检查是否在排除列表中
-    for _, pattern in ipairs(M.config.exclude_files) do
-        if vim.fn.fnamemodify(current_file, ":t") == pattern or
-            vim.fn.fnamemodify(current_file, ":t"):match(pattern) then
-            return
+    -- 检查是否在排除列表中
+    if M.config.exclude_files then
+        for _, pattern in ipairs(M.config.exclude_files) do
+            if vim.fn.fnamemodify(current_file, ":t") == pattern or
+                vim.fn.fnamemodify(current_file, ":t"):match(pattern) then
+                return
+            end
         end
     end
 
-    -- 查找 .venv 目录
+    -- 查找 .venv 目录，确定项目目录
     local venv_dir = vim.fn.finddir(".venv", ".;")
+    local project_root = vim.fn.getcwd()
     if venv_dir == "" then
         if M.config.verbose then
             print("[simple-backup] Error: .venv directory not found!")
         end
-        return
+    else
+        project_root = vim.fn.fnamemodify(venv_dir, ":h")
     end
 
-    -- 获取项目根目录（.venv 的父目录）
-    local project_root = vim.fn.fnamemodify(venv_dir, ":h")
+    -- 查找备份文件目录
+    local backup_dir = vim.fn.finddir(M.config.backup_dir, ".;")
+    if backup_dir == "" then
+        -- 如果不存在，则在项目目录创建
+        backup_dir = project_root .. "/" .. M.config.backup_dir
+        -- 标准化路径
+        backup_dir = vim.fn.fnamemodify(backup_dir, ":p"):gsub("\\", "/")
+        if backup_dir:sub(-1) ~= "/" then
+            backup_dir = backup_dir .. "/"
+        end
+        vim.fn.mkdir(backup_dir, "p")
+    end
+    if M.config.verbose then
+        print("[simple-backup] Backup directory: " .. backup_dir)
+    end
 
     -- 标准化路径处理（Windows 兼容）
     local normalized_root = vim.fn.fnamemodify(project_root, ":p"):gsub("\\", "/")
     if normalized_root:sub(-1) ~= "/" then
         normalized_root = normalized_root .. "/"
-    end
-
-    local normalized_file = vim.fn.fnamemodify(current_file, ":p"):gsub("\\", "/")
-
-    -- 新增：检查是否在包含目录中（如果配置了include_dirs）
-    if M.config.include_dirs then
-        local matched = false
-        for _, dir in ipairs(M.config.include_dirs) do
-            if normalized_file:find("/" .. dir .. "/") then
-                matched = true
-                break
-            end
-        end
-        if not matched then
-            return
-        end
-    end
-
-    -- 原有：检查是否在排除目录中
-    for _, dir in ipairs(M.config.exclude_dirs) do
-        if normalized_file:find("/" .. dir .. "/") then
-            return
-        end
     end
 
     -- 提取相对路径（移除项目根目录前缀）

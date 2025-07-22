@@ -5,6 +5,7 @@ Neovim 插件，用于在python文件保存时自动创建带时间戳的备份�
 ## 功能
 
 - 自动备份修改过的文件
+- 默认备份至项目目录下的.history文件夹下，若不存在则自动搜索.venv并在同级创建，若都不存在则在项目根目录创建.history文件夹
 - 可配置的备份目录和时间戳格式
 - 支持包含/排除特定文件类型，默认不排除
 - 支持包含/排除特定目录，默认不排除
@@ -15,7 +16,7 @@ Neovim 插件，用于在python文件保存时自动创建带时间戳的备份�
 ```lua
 require('simple_backup').setup({
     backup_dir = ".history",           -- 备份目录名
-    timestamp_format = "%Y%m%d_%H%M%S", -- 时间戳格式
+    timestamp_format = "%Y%m%d%H%M%S", -- 时间戳格式
     enabled = true,                    -- 是否启用插件
     
     -- 排除配置
