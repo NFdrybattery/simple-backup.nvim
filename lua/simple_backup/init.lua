@@ -5,11 +5,11 @@ local default_config = {
     backup_dir = ".history",           -- 备份目录名
     timestamp_format = "%Y%m%d%H%M%S", -- 时间戳格式
     enabled = true,                    -- 是否启用插件
-    exclude_dirs = nil,                -- 排除目录
-    exclude_files = nil,               -- 排除文件模式
-    include_dirs = nil,                -- 包含目录模式，nil表示不启用
-    include_files = nil,               -- 包含文件模式，nil表示不启用
     verbose = true,                    -- 是否显示备份信息
+    include_dirs = nil,                -- 包含目录，nil表示不启用
+    exclude_dirs = nil,                -- 排除目录，nil表示不启用
+    include_files = nil,               -- 包含文件，nil表示不启用
+    exclude_files = nil,               -- 排除文件，nil表示不启用
 }
 
 -- 合并用户配置
@@ -55,12 +55,21 @@ local function backup_file()
         end
     end
 
+    -- 通配符转换函数
+    local function glob_to_pattern(glob)
+        -- 转义文件类型字符串
+        local pattern = glob:gsub("%*", ".*")
+        -- 添加字符串边界匹配
+        return "^" .. pattern .. "$"
+    end
+
     -- 检查是否在包含列表中（如果配置了include_files）
     if M.config.include_files then
         local matched = false
         for _, pattern in ipairs(M.config.include_files) do
-            if vim.fn.fnamemodify(current_file, ":t") == pattern or
-                vim.fn.fnamemodify(current_file, ":t"):match(pattern) then
+            -- 转换glob模式为Lua模式
+            local lua_pattern = glob_to_pattern(pattern)
+            if vim.fn.fnamemodify(current_file, ":t"):match(lua_pattern) then
                 matched = true
                 break
             end
@@ -73,8 +82,8 @@ local function backup_file()
     -- 检查是否在排除列表中
     if M.config.exclude_files then
         for _, pattern in ipairs(M.config.exclude_files) do
-            if vim.fn.fnamemodify(current_file, ":t") == pattern or
-                vim.fn.fnamemodify(current_file, ":t"):match(pattern) then
+            local lua_pattern = glob_to_pattern(pattern)
+            if vim.fn.fnamemodify(current_file, ":t"):match(lua_pattern) then
                 return
             end
         end
@@ -102,9 +111,6 @@ local function backup_file()
             backup_dir = backup_dir .. "/"
         end
         vim.fn.mkdir(backup_dir, "p")
-    end
-    if M.config.verbose then
-        print("[simple-backup] Backup directory: " .. backup_dir)
     end
 
     -- 标准化路径处理（Windows 兼容）
@@ -147,8 +153,13 @@ local function backup_file()
         print("[simple-backup] Error saving backup: " .. err)
     end
 
-    -- 清除修改标志，避免无限循环
+    -- 保存当前缓冲区的修改状态
+    local original_modified = vim.bo.modified
+    -- 临时清除修改标志，防止无限循环
+    vim.bo.modified = false
     vim.cmd("set nomodified")
+    -- 恢复原始修改状态
+    vim.bo.modified = original_modified
 end
 
 -- 初始化插件
