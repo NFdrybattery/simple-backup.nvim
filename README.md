@@ -9,6 +9,7 @@ Neovim 插件，用于在python文件保存时自动创建带时间戳的备份�
 - 可配置的备份目录和时间戳格式
 - 支持包含/排除特定文件类型，默认不排除
 - 支持包含/排除特定目录，默认不排除
+- 依次进行包含目录、排除目录、包含文件类型、排除文件类型判断，后者优先级高
 - 详细的日志输出
 
 ## 配置
@@ -18,15 +19,14 @@ require('simple_backup').setup({
     backup_dir = ".history",           -- 备份目录名
     timestamp_format = "%Y%m%d%H%M%S", -- 时间戳格式
     enabled = true,                    -- 是否启用插件
-    
-    -- 排除配置
-    exclude_dirs = { ".git", "node_modules" }, -- 排除目录
-    exclude_files = { "*.tmp", "*.bak" },      -- 排除文件模式
-    
-    -- 包含配置（可选）
-    include_dirs = nil,                -- 包含目录模式，nil表示不启用
-    include_files = nil,               -- 包含文件模式，nil表示不启用
-    verbose = true,                    -- 是否显示备份信息
+    verbose = true,                    -- 是否显示备份通知
+
+    -- 备份文件夹筛选
+    include_dirs = {"src"},                -- 包含目录，nil表示不启用
+    exclude_dirs = nil,                    -- 排除目录，nil表示不启用
+    -- 备份文件类型筛选
+    include_files = {"*.py"},               -- 包含文件，nil表示不启用
+    exclude_files = {"*.tmp", "*.bak"},      -- 排除文件，nil表示不启用
 })
 ```
 
